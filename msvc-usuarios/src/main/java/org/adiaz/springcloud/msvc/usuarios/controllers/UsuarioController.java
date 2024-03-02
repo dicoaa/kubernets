@@ -1,14 +1,17 @@
 package org.adiaz.springcloud.msvc.usuarios.controllers;
 
+import jakarta.validation.Valid;
 import org.adiaz.springcloud.msvc.usuarios.models.entity.Usuario;
 import org.adiaz.springcloud.msvc.usuarios.services.UsuarioService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cloud.openfeign.support.FeignHttpClientProperties;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -33,8 +36,13 @@ public class UsuarioController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Usuario crear(@RequestBody Usuario usuario){
-        return service.guardar(usuario);
+    public ResponseEntity<?> crear(@Valid @RequestBody Usuario usuario, BindingResult result){
+
+        if (result.hasErrors()){
+            return validar(result);
+        }
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.guardar(usuario));
     }
 
     //@PostMapping
@@ -43,7 +51,12 @@ public class UsuarioController {
     //}
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> editar(@RequestBody Usuario usuario, @PathVariable Long id){
+    public ResponseEntity<?> editar(@Valid @RequestBody Usuario usuario, BindingResult result, @PathVariable Long id){
+
+        if (result.hasErrors()){
+            return validar(result);
+        }
+
         Optional<Usuario> o = service.porId(id);
         if (o.isPresent()){
             Usuario usuarioDb = o.get();
@@ -63,6 +76,14 @@ public class UsuarioController {
             return ResponseEntity.noContent().build();
         }
         return ResponseEntity.notFound().build();
+    }
+
+    private ResponseEntity<Map<String, String>> validar(BindingResult result) {
+        Map<String, String> errores = new HashMap<>();
+        result.getFieldErrors().forEach(err -> {
+            errores.put(err.getField(), "El campo " + err.getField() + " " + err.getDefaultMessage());
+        });
+        return ResponseEntity.badRequest().body(errores);
     }
 
 }
